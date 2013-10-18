@@ -1,0 +1,430 @@
+A Rough Guide to VPAnimEngine
+
+
+Introduction
+============
+
+VPAnimEngine is a family of JS modules for creating animations.  It has a modular architecture which allows for it to be customised and extended.
+
+
+Key Concepts
+============
+
+In order to understand how VPAnimEngine works, there's a few concepts to grok, which are as follows:
+
+
+VPAnimEngine Object and Instances:
+
+The VPAnimEngine object itself is fairly minimal, containing only essentially a stripped down set of functionality.  All rendering of animations is managed by separate software modules.  There are several class-level functions inside VPAnimEngine to allow for the functionality of VPAnimEngine instances to be augmented.
+
+
+Settings:
+
+A VPAnimEngine instance object contains a "settings" object which is used to store settings related to the current engine instance.  VPAnimEngine includes inbuilt instance methods to make changes and adjustments to the settings object, which include getSettings, adjustSettings, copySettings and clearSettings.  All of these methods use a settings path - a simple array that defines where to find data inside the settings object.  The use of a settings path allows for the programatic access of data inside the settings object.  An example of a settings path would be:
+["vuData", "values", 3]
+
+This would otherwise be expressed in JS code as:
+animEngine.settings.vuData.values[3]
+
+
+Actions:
+
+VPAnimEngine can be augmented with action modules.  An action module JavaScript file will call VPAnimEngine.addAction or VPAnimEngine.addActions to add actions to all VPAnimEngine instances.
+
+
+Renderers:
+
+Renderer modules JavaScript files will call VPAnimEngine.addRenderer to add in a renderer to all VPAnimEngine instances.  A renderer is essentially a function with a fixed format API.  They were, primarily, intended to perform rendering to a display surface, but they may also be used for other purposes inside a rendering pipeline.
+
+
+Surfaces:
+
+Renderers work with surfaces, and VPAnimEngine understands many different types of surface.  A surface can be a DOM element, an image, a video, or a canvas.  Surfaces are referenced by name.
+
+
+Stages:
+
+Another key concept inside VPAnimEngine is stages.  A single stage is an object that specifies that the engine should do something, or a settings path to indicate where to find the stage to execute.  Typically stages are grouped together in a stage list - a simple array containing a list of stages.  An example of a stage list is as follows:
+[
+  { action: "updateVU" },
+  { render: "clear", destination: "vuDisplay" },
+  { render: 'transform', settings: ["vuTrans"] },
+  { render: "vu", destination: "vuDisplay" },
+  [ "pathTo", "actionObject", "inSettings" ],
+  { stages: [<list of other stages, or path to list of stages in settings>] }
+]
+
+
+Conditions:
+
+Stage objects can optionally include a "condition" slot.  This can indicate an action, or a settings path, to check to see whether the stage should execute or not.  If a condition definition is present, the stage will only execute if the condition is true.
+
+
+Pipelines:
+
+What all of the above is leading to is animation pipelines.  A single VPAnimEngine instance object can include and manage several animation pipelines.
+
+At it's simplest level an animation pipeline definition will have a "stages" slot containing an array of stages, and it may also (optionally) contain a settings path.  Those stages will be run every time the pipeline executes, and the settings for a pipeline may define the FPS that pipeline runs at.
+
+A pipeline definition may contain several other lists of stages.  "initStages" will be called when a pipeline is added, "startStages" will be called every time that pipeline is started, "stopStages" will be called when the pipeline is stopped.  (Pipelines may also at runtime include "autoStages" which can be added to whilst "stages" are executing, and will be run once all "stages" have been processed.)
+
+
+Finally there's a few more esoteric things that modules may make use of...
+
+Callbacks:
+
+There's several different types of callbacks that VPAnimEngine may call, which allows for action modules to augment behaviour of the engine.  For example, the "transitions" action module adds an "adjust" callback (called when a setting is adjusted), and a "pipe process" callback (called when pipeline "stages" are getting processed).
+
+
+Initializers and Resetters:
+
+It's also possible for modules to add in an initializer and/or a resetter - a function that will get called when VPAnimEngine is initialized, or reset.
+
+
+Time support modules:
+
+Finally, time support is abstracted out into time support modules.  This is to allow for different time sources to be used besides absolute time, such as the current playing time of an audio file.  VPRelativeTime was the only implemented time module for a long time, which provides time values since the last reset.  Accompanying that now is VPSM2Time, which can be used to get time from a SoundManager2 instance.
+
+
+
+The API
+=======
+
+
+engineInstance.init()
+
+For internal use only.  Called when a new VPAnimEngine instance object is created, used to initialise the new object.
+
+
+engineInstance.reset(skipClear)
+skipClear: boolean (optional)
+
+Resets the engine instance, calling all registered resetters.  Setting skipClear ensures that the settings and pipelines associated with the engine instance are not cleared.
+
+
+engineInstance.callResetter(name)
+name: string
+
+Calls the named resetter, if it is found.
+
+
+engineInstance.checkDependencies(definitions)
+definitions: dependency object definitions
+
+Checks for dependencies.  Intended primarily for internal use.
+
+
+engineInstance.getSettings(path, allowUndef, adjusting)
+path: settings path definition (array)
+allowUndef: boolean (optional)
+adjusting: boolean (optional)
+
+Returns settings value found at the given path.
+Setting "allowUndef" permits undefined to be returned, otherwise this method will return an empty object.
+Setting the "adjusting" parameter returns the parent object of the data found in the path.  This setting is intended for internal use only.
+
+
+engineInstance.adjustSettings(path, newSettings, clear)
+path: settings path definition (array)
+newSettings: value
+clear: boolean (optional)
+
+Adjusts settings found at the path to the newly given newSettings value.  If newSettings is an object it will be merged with any existing settings object found, with newSettings values taking priority.  If newSettings is an arrays it will also be merged.  NB merges are not recursive.
+
+Providing an empty path, i.e. [], allows you to merge newSettings into the main settings object.  This will only work if newSettings is a genuine object (i.e. not an array or other value).
+
+
+engineInstance.copySettings(path, newSettingsPath, clear)
+path: settings path definition (array)
+newSettingsPath: settings path definition (array)
+clear: boolean (optional)
+
+Convenience wrapper for:
+    this.adjustSettings(path, this.getSettings(newSettingsPath), clear);
+
+
+engineInstance.clearSettings(path)
+path: settings path definition (array) (optional)
+
+Clears settings found at the path, or all settings if no path is given
+
+
+engineInstance.defaultTimeType = 'relative'
+
+The default time type, defining what time support module should be used when no other explicit choice is made
+
+
+engineInstance.getTime(type, time)
+type: string (optional)
+time: value
+
+Gets the current time of the given type.
+
+NB I think the current implementation's use of the "time" parameter may be faulty/incorrect.
+- indeed, on review, I'm not sure why the time parameter is there, as there doesn't seem to be a use-case for this
+
+
+engineInstance.surfaces
+
+An object containing surface objects.
+NB this is an object property with special getter/setter values.  Setting this value directly will make use of the addSurface method (defined below).
+
+Surface element objects will include a "surfaceSettings" object, based on the settings object passed to addSurface, but also including:
+<surface>.surfaceSettings.type filled in using getSurfaceType
+<surface>.surfaceSettings.name filled in from name argument
+
+
+engineInstance.getSurfaceType(el)
+el: DOM element
+
+Returns one of "canvas", "video", "image" or undefined.
+
+
+engineInstance.addSurface(name, surface)
+name: string
+surface: surface definition object
+
+Adds a surface to the surface list with the given name and surface definition.  If the name has already been used for another surface then that surface will be replaced.
+
+Surface definition object supports the following types/formats:
+{ outlet: 'name' } / { selector: 'cssSelectorString' } / { source: 'url' } / { cssCanvas: 'name'} / { (new canvas) }
+optionally including "addToView" flag, metrics-style data, and "className"
+
+'outlet' type only supported if this.controller set
+'selector' will look in *one of* this.view, this.controller.view, or document (in that order)
+'source' form indicates an image or video file
+NB 'video' type not supportable inside iTunes (unless we're emulating playlist)
+'sources' + 'index' not currently supported
+
+TODO
+Better definition of surface definition object
+generic 'metrics' support
+
+
+engineInstance.clearSurfaces()
+
+Clears all surface objects.
+
+
+engineInstance.removeSurface(name)
+name: string
+
+Removes surface object with given name.
+
+If the surface's surface definition object contained the "addToView" flag then it will be removed from the DOM.
+
+
+engineInstance.pipelines
+
+Object containing pipeline objects.
+
+
+engineInstance.addPipeline(name, pipeline)
+name: string
+pipeline: pipeline definition object
+
+Adds/creates an animation pipeline.  When a pipeline is added if it has any "initStages" they will be executed.
+
+pipeline definition objects have the following format:
+{
+}
+TODO: insert pipeline object definition
+
+
+engineInstance.startPipeline(name, options)
+name: string
+options: object (optional)
+
+Starts an animation pipeline of the given name, if a matching definition is found and the pipeline is not already running.
+
+When a pipeline is started, if it has any "startStages" they will be executed.
+
+The optional options object will be passed through to any registered pipeProcessCallback functions.
+
+
+engineInstance.stopPipeline(name, options)
+name: string
+options: optional
+
+Stops an animation pipeline of the given name if a matching definition is found and it's running.
+
+When a pipeline is stopped, if it has any "stopStages" they will be executed.
+
+If options is given an object which includes a boolean true "ignoreWarnings" flag, then the warning message when attempting to stop a non-running pipeline will be inhibited.
+
+
+engineInstance.processStages(stages, pipeline, source, destination)
+stages: stage list
+pipeline: pipeline object
+source: current source surface
+destination: current destination surface
+
+Processes a list of stages.
+NB if a stage returns null, then processing of the stage list will be aborted and subsequent stages will not be executed.
+
+This method is mostly intended for internal use, however it can have uses elsewhere.
+
+
+engineInstance.processStage(stage, pipeline, source, destination)
+stages: stage definition
+pipeline: pipeline object
+source: current source surface
+destination: current destination surface
+
+Processes a single stage.
+
+This method is essentially intended only for internal use.
+
+TODO:
+define stage object
+
+
+engineInstance.checkCondition(params, pipeline, source, destination)
+params: er, params
+pipeline: pipeline object
+source: current source surface
+destination: current destination surface
+
+Checks the condition indicated by params.
+Used internally by processStage to determine whether a stage should execute.
+
+TODO:
+define condition object
+
+
+engineInstance.doRender(type, source, destination, settings, pipeline, stage)
+type: string
+source: current source surface (optional)
+destination: current destination surface (optional)
+settings: object, or settings path (optional)
+pipeline: current pipeline object (optional)
+stage: current stage (optional)
+
+Method to call a renderer of a given type.
+(Used by processStage for renderer stages.)
+
+NB whilst most arguments for this method are optional, they might be required by the underlying renderer being called.
+
+
+engineInstance.runningPipelines()
+
+Convenience method to provide a list of running animation pipelines.
+
+
+engineInstance.pushAutoStage(pipe, stage, options)
+pipe: pipeline name
+stage: stage object (or settings path to a stage object)
+option: options object (optional)
+
+Convenience method for pushing a stage to the autoStages array of the given named pipeline.  It's an action method primarily intended to be used by stages within running pipelines.
+
+If the "options" object contains a boolean true value for "single" then only one copy of the given stage will be added to the autoStages list.
+
+
+VPAnimEngine.renderers
+
+Read-only property on VPAnimEngine which will return names of all registered renderers.
+
+
+VPAnimEngine.addRenderer(renderer)
+renderer: renderer object definition
+
+Adds a renderer to VPAnimEngine, for use by renderer modules.
+
+TODO:
+document renderer function/object definition
+
+
+VPAnimEngine.addAction(action)
+action: action object definition
+
+Adds an action to VPAnimEngine, for use by action modules.
+
+TODO:
+document action object definition
+
+
+VPAnimEngine.addActions(actions)
+actions: array of action object definitions
+
+Convenience wrapper to add a list of action definitions, for use by action modules.
+
+
+VPAnimEngine.actions
+
+Read-only property which returns an object containing all action definitions.
+
+
+VPAnimEngine.addAdjustCallback(callback)
+callback: function
+
+Adds an "adjust" callback function which will be called when adjustSettings is used.  Primarily intended for use by renderer or action modules.
+
+
+VPAnimEngine.addPipeProcessCallback(callback)
+callback: function
+
+Adds a callback function that will be called before a pipeline is about to process it's stages list.  Primarily intended for use by renderer or action modules.
+
+
+VPAnimEngine.addInitialiser(name, method)
+name: string
+method: function
+
+Adds an initialiser function to be used when engineInstance.init gets called.  Intended for use by renderer or action modules.
+
+
+VPAnimEngine.getInits()
+
+Debug method to dump out initialisers to console.  Intended for debugging only.
+
+
+VPAnimEngine.addResetter(name, method)
+name: string
+method: function
+
+Adds a resetter function to be used when engineInstance.reset gets called.  Intended for use by renderer or action modules.
+
+
+VPAnimEngine.getResets()
+
+Debug method to dump out resetters to console.  Intended for debugging only.
+
+
+VPAnimEngine.timeGetters
+
+Read-only property which returns an object containing the installed time getter functions.
+
+
+VPAnimEngine.addTimeGetter(name, method)
+name: string
+method: function
+
+Adds a time getter function to be used by engineInstance.getTime.  Intended to be used by time support modules.
+
+
+
+
+
+Paint renderer:
+
+optional 'fillStyle' and 'strokeStyle' slots to set settings
+otherwise use settings if specific settings not available
+
+
+
+processStages:
+function or action stages that return "null" will now cause the stage list to abort (propagating upwards)
+
+
+stage objects can now optionally include a "condition" parameter
+the condition parameter can be a string (indicating an action, optionally with a conditionInController flag),
+a settingPath array, or a function
+
+if the condition evaluates to null then the current stages list will abort
+if the condition evaluates as truthy then the stage will be allowed to execute
+
+
+stage objects should include either an action, render, or stages slot
+(stages slot is new - allowing for conditional execution of a list of stages - augmenting the simpler array stage)
+
