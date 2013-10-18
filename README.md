@@ -25,7 +25,7 @@ VPAnimEngine started out as the technology that drove the music visualizer in th
 
 From there it developed and went on to be used as the basis for several other visualizers in various different iTunes LPs, gaining new features and new modules along the way.
 
-It's latest public outing has been in the Tinie Tempah Demonstration album promo site, which also makes use of our application framework [VPBooklet](https://github.com/stevesims/vpbooklet). It was used there to drive title-card canvas animations, drive a kaleidoscope effect, gradually draw a line-art heart, 'glitch' some images and videos, and also to provide fallback animation support to users Internet Explorer 9, as that browser does not provide CSS3 animation support.
+It's latest public outing has been in the [Tinie Tempah Demonstration album promo site](http://listen.tinietempah.com/), which also makes use of our application framework [VPBooklet](https://github.com/stevesims/vpbooklet). It was used there to drive title-card canvas animations, produce a kaleidoscope effect, gradually draw a line-art heart, 'glitch' some images and videos, and also to provide fallback animation support to users Internet Explorer 9, as that browser does not provide CSS3 animation support.
 
 Besides VPAnimEngine, the Deadmau5 iTunes LP also spawned [VPTimelineHandler](https://github.com/stevesims/vptimelinehandler). This companion library can be used to add time-driven events to animations, and is used in the Tinie Tempah site to drive lyrics displays.
 
