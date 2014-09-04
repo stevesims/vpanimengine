@@ -31,7 +31,7 @@ var VPAnimEngine = (function() {
   // constants
   var kPriorityParams = ['controller', 'view'];
 
-  function debug() {
+  var debug = function debug() {
     if (window.DEBUG !== undefined && window.DEBUG && window.console && window.console.log) {
       var args = Array.prototype.slice.call(arguments);
       if (window.SHOW_TRACE && window.console && window.console.trace) {
@@ -121,6 +121,7 @@ var VPAnimEngine = (function() {
       if (definitions.hasOwnProperty(name)) {
         var obj = definitions[name];
         if (obj.dependencies) {
+          /*jshint loopfunc: true */
           obj.dependencies.forEach(function(dep) {
             if (dep.action) {
               var actionDef = actionDefinitions[dep.action];
@@ -190,7 +191,7 @@ var VPAnimEngine = (function() {
   };
 
   function clone(obj){
-    if(obj == null || typeof(obj) != 'object')
+    if(obj === null || typeof(obj) != 'object')
       return obj;
 
     var temp = new obj.constructor();
@@ -201,6 +202,7 @@ var VPAnimEngine = (function() {
   }
 
   engine.prototype.adjustSettings = function adjustSettings(path, newSettings, clear) {
+    /*jshint loopfunc: true */
     if (!Array.isArray(path)) {
       path = [path];
     }
@@ -234,10 +236,10 @@ var VPAnimEngine = (function() {
         settings[leaf] = {};
       }
       settings = settings[leaf];
-      for (var property in newSettings) {
-        settings[property] = newSettings[property];
+      for (var prop in newSettings) {
+        settings[prop] = newSettings[prop];
         adjustCallbacks.forEach(function(callback) {
-          callback.apply(this, [path, property, true]);
+          callback.apply(this, [path, prop, true]);
         }, this);
       }
     } else {
@@ -699,13 +701,15 @@ var VPAnimEngine = (function() {
 
   // Pipeline utility functions
   function clearPipelines() {
+    /*jshint validthis: true */
     for (var pipe in this.pipelines) {
       this.stopPipeline(pipe, { ignoreWarnings: true });
       delete this.pipelines[pipe];
     }
-  };
+  }
 
   function processPipeline(name, options) {
+    /*jshint validthis: true */
     var pipeline = this.pipelines[name];
     if (!pipeline) {
       debug("Error: processPipeline could not find pipeline named %o", name);
@@ -736,7 +740,7 @@ var VPAnimEngine = (function() {
       var fps = settings.fps || 60;
       pipeline.timer = VPUtils.delayedCall(this, processPipeline, Math.max((1000/fps) - renderTime, 2), name, options);
     }
-  };
+  }
   
   
   // Engine object methods - accessible only on VPAnimEngine and not instances
@@ -747,7 +751,6 @@ var VPAnimEngine = (function() {
   });
 
   engine.addRenderer = function addRenderer(rendererDef) {
-    var rendererDef;
     var renderer = rendererDef.renderer;
     var name = rendererDef.name;
     
